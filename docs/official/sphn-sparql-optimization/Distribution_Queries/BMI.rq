@@ -1,0 +1,59 @@
+DEFINE sql:select-option "order"
+
+PREFIX sphn: <https://biomedit.ch/rdf/sphn-schema/sphn#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX ucum: <https://biomedit.ch/rdf/sphn-resource/ucum/>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+PREFIX einstein: <https://biomedit.ch/rdf/sphn-resource/einstein/shortcuts#>
+PREFIX snomed: <http://snomed.info/id/>
+
+SELECT ?pseudo_id ?bmi_value ?bmi_unit
+WHERE {
+    {
+        SELECT ?pseudo_id
+        WHERE {
+            {
+                SELECT ?pseudo_id (MAX(?adminSex_filter) AS ?adminSex_alias)
+                WHERE {
+                    {
+                        SELECT (?g as ?pseudo_id) ?adminSex_filter
+                        WHERE {
+                            {
+                                SELECT DISTINCT ?g 
+                                WHERE {
+                                    GRAPH ?g {
+                                        ?administrativeSexDistribution_temp_concept rdf:type ?administrativeSexDistribution_code.
+                                        FILTER (?administrativeSexDistribution_code IN (snomed:248152002))
+                                        ?administrativeSexDistribution_concept sphn:hasCode ?administrativeSexDistribution_temp_concept.
+                                        ?administrativeSexDistribution_concept rdf:type sphn:AdministrativeSex. 
+                                    }
+                                }
+                            }
+                            BIND("true"^^xsd:boolean AS ?adminSex_filter)
+                        }
+                    }
+
+                }
+                GROUP BY ?pseudo_id
+            }
+        FILTER (?adminSex_alias)
+        }
+    }
+    GRAPH ?pseudo_id {
+        {
+            SELECT ?pseudo_id (MAX(?date) as ?topBMIDate)
+            WHERE{
+                    ?bmi rdf:type sphn:BodyMassIndex .
+                    ?bmi sphn:hasDeterminationDateTime ?date .
+            }
+        }
+        ?bmi sphn:hasDeterminationDateTime ?topBMIDate .
+        ?bmi sphn:hasSubjectPseudoIdentifier ?pseudo_id .
+        ?bmi rdf:type sphn:BodyMassIndex .
+        ?bmi sphn:hasQuantity ?quant .
+        ?quant sphn:hasValue ?bmi_value .
+        ?quant sphn:hasUnit ?quant_unit .
+        ?quant_unit sphn:hasCode ?quant_unit_code .
+        ?quant_unit_code rdf:type ?bmi_unit.
+    }
+}

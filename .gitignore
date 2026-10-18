@@ -1,0 +1,16 @@
+# environments and caches
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+# local data: eval traces and code labels from restricted terminologies (SNOMED CT, ICD-10-GM, LOINC, CHOP, UCUM).
+# This repo becomes open source after the event: never commit patient files, terminologies or their labels.
+nl2q_data*/
+*.ttl
+*.nt
+*.zip
+*.tar.zst
+# PDFs only where we put them on purpose
+*.pdf
+!docs/official/*.pdf
+!docs/report/*.pdf

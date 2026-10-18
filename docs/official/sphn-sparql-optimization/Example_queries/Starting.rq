@@ -1,0 +1,22 @@
+DEFINE input:inference "https://biomedit.ch/rdf/sphn-resource/global"
+
+PREFIX sphn: <https://biomedit.ch/rdf/sphn-schema/sphn#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX ucum: <https://biomedit.ch/rdf/sphn-resource/ucum/>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+PREFIX snomed: <http://snomed.info/id/>
+
+SELECT (COUNT(?pseudo_id) AS ?countResult)
+WHERE {
+    ?pseudo_id rdf:type sphn:SubjectPseudoIdentifier .
+
+    ?diagnosis rdf:type sphn:BilledDiagnosis .
+    ?diagnosis sphn:hasSubjectPseudoIdentifier ?pseudo_id.
+    ?diagnosis sphn:hasCode ?diagnosis_code .
+    ?diagnosis_code rdf:type <https://biomedit.ch/rdf/sphn-resource/icd-10-gm/E11> .
+
+    ?administrativeSex rdf:type sphn:AdministrativeSex.
+    ?administrativeSex sphn:hasSubjectPseudoIdentifier ?pseudo_id.
+    ?administrativeSex sphn:hasCode ?administrativeSex_code.
+    ?administrativeSex_code rdf:type snomed:248152002 .
+}

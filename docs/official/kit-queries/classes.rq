@@ -1,0 +1,10 @@
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT ?class (COUNT(*) AS ?instances)
+WHERE {
+  GRAPH ?g { ?s rdf:type ?class }
+  FILTER(STRSTARTS(STR(?g), "http://example.org/graph/"))
+}
+GROUP BY ?class
+ORDER BY DESC(?instances)
+LIMIT 25

@@ -1,0 +1,50 @@
+DEFINE sql:select-option "order"
+
+PREFIX sphn: <https://biomedit.ch/rdf/sphn-schema/sphn#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX ucum: <https://biomedit.ch/rdf/sphn-resource/ucum/>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+PREFIX einstein: <https://biomedit.ch/rdf/sphn-resource/einstein/shortcuts#>
+PREFIX snomed: <http://snomed.info/id/>
+
+SELECT ?pseudo_id (MAX(?ageDistribution_temp) AS ?age) (MAX(?administrativeSexDistribution_code) AS ?sex)
+WHERE {
+    {
+        SELECT ?pseudo_id
+        WHERE {
+            {
+                SELECT ?pseudo_id (MAX(?diagnosis_filter) AS ?diagnosis_alias) (MAX(?lab_test_filter) as ?lab_test_alias) (MAX(?age_filter) as ?age_alias)
+                WHERE {
+                    {
+                        SELECT (?g as ?pseudo_id) ?diagnosis_filter
+                        WHERE {
+                            {
+                                SELECT DISTINCT ?g 
+                                WHERE {
+                                    GRAPH ?g {
+                                        ?diagnosis0_code rdf:type <https://biomedit.ch/rdf/sphn-resource/icd-10-gm/E11> OPTION(inference "https://biomedit.ch/rdf/sphn-resource/global").
+                                        ?diagnosis sphn:hasCode ?diagnosis0_code .
+                                        ?diagnosis rdf:type sphn:BilledDiagnosis .
+                                    }
+                                }
+                            }
+                            BIND("true"^^xsd:boolean AS ?diagnosis_filter)
+                        }
+                    }
+
+                }
+                GROUP BY ?pseudo_id
+            }
+        FILTER (?diagnosis_alias )
+        }
+    }
+    GRAPH ?pseudo_id {
+                                ?administrativeSexDistribution_temp_concept rdf:type ?administrativeSexDistribution_code.
+                                FILTER (?administrativeSexDistribution_code IN (snomed:248152002, snomed:248153007, snomed:32570681000036106))
+                                ?administrativeSexDistribution_concept sphn:hasCode ?administrativeSexDistribution_temp_concept.
+                                ?administrativeSexDistribution_concept rdf:type sphn:AdministrativeSex.
+                                ?ageDistribution_concept einstein:hasCalculatedBirthDate ?ageDistribution_temp_concept.
+                                BIND(bif:datediff("year", ?ageDistribution_temp_concept, NOW()) AS ?ageDistribution_temp)
+    }
+}
+GROUP BY ?pseudo_id

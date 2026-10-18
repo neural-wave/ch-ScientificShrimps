@@ -1,0 +1,56 @@
+{
+ "_about": "Pre-translation screen for the d3 decision model: it judges the request text alone, before any SPARQL is generated, and can only block (a request it lets through is still generated and checked by the rules). One criterion per official rule (Query_Compliance.md), each starting with the rule's own wording so it reads as the compliance_reason, 5 labelled example requests each, kept distinct from the questions in tests/bench/. Edit freely: no code change needed.",
+ "instructions": "A researcher's request to a clinical database (one named graph per patient) will be translated literally into one SPARQL query. Pick a rule only if every faithful translation of the request would break it; if any part of the request would, pick that rule. Pick proceed if the request could be answered by a read-only SELECT that returns only aggregated information across patients, even when it is vague or short, or about a sensitive or rare condition. Judge what the request asks to get or do, not why it is asked.",
+ "criteria": {
+  "proceed": "The request can be answered with counts, averages, shares, minima, maxima or distributions across patients, possibly grouped by a category such as a code, sex, year, age band, drug or route. This includes yes/no and comparison questions, 'which kinds' or 'most common' questions, top-N lists of categories, and totals such as the number of patients or cases.",
+  "single_patient": "Queries about a single, identifiable patient are not allowed: the request names one specific patient or record (a patient number, pseudo identifier, graph or file name, administrative case or sample number).",
+  "not_aggregated": "Queries must always return aggregated information across all patients: the request asks for one row per patient, case, record, event or measurement (each item with its date, value or age) instead of numbers about groups.",
+  "unrestricted": "Queries that match the whole graph without restriction are not allowed: the request is about the database itself (all data, its size, every triple, statement, property, predicate, class or graph) rather than a clinical concept.",
+  "not_select": "Only SELECT queries are allowed: the request asks to change data (delete, insert, update, load, drop, clear) or to get data back as an RDF graph, dump, export file or description of a resource instead of a result table.",
+  "exposes_identifiers": "No identifiers may be exposed: the request asks to return, or group by, identifiers of patients, cases, samples, lab tests or diagnoses ('which patients', 'their IDs', 'who are they'). Counting them is fine, and clinical codes (ICD-10-GM, SNOMED CT, LOINC, CHOP) are categories, not identifiers."
+ },
+ "examples": {
+  "proceed": [
+   "List the ten most frequent procedure codes with the number of patients for each.",
+   "How old is the oldest patient with a heart failure diagnosis?",
+   "How many distinct administrative cases were opened in 2024?",
+   "Do we have any patients with an Orphanet-coded rare disease, and are they mostly women or men?",
+   "How many patients are there in total?"
+  ],
+  "single_patient": [
+   "Show the diagnoses of the patient in graph mock_data-1_0007.",
+   "When did patient 1012502 last have a lab test?",
+   "How many prescriptions does the patient with pseudo identifier d1e2cd2c have?",
+   "List the procedures billed in administrative case ID-10125020000001.",
+   "Average lab value for the patient file gen_mock_data-1_1012777."
+  ],
+  "not_aggregated": [
+   "List every billed diagnosis with its record date.",
+   "Show each patient's age and administrative sex.",
+   "Give me all lab results above 200 with their units.",
+   "Show each drug administration with its start and end time.",
+   "Print the birth dates of the patients with a tumour diagnosis."
+  ],
+  "unrestricted": [
+   "Count every triple in the database.",
+   "How many statements are stored for each predicate?",
+   "Return all subjects, predicates and objects.",
+   "Count everything there is per graph.",
+   "How many distinct values does any property take?"
+  ],
+  "not_select": [
+   "Delete all billed diagnoses of influenza.",
+   "Export the oncology records as an RDF graph.",
+   "Update the sex of every patient born before 1930 to unknown.",
+   "Insert a new diagnosis for every patient older than 90.",
+   "Describe everything known about the data provider."
+  ],
+  "exposes_identifiers": [
+   "How many patients have asthma, and what are their pseudo identifiers?",
+   "Count lab test events per laboratory test ID.",
+   "Number of diagnoses per administrative case identifier.",
+   "Which patients received chemotherapy last year?",
+   "List the sample IDs used for genetic tests, with counts."
+  ]
+ }
+}

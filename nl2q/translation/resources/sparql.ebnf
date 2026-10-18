@@ -1,0 +1,294 @@
+# The syntax guard: what the generator may write when vLLM constrains its output with this grammar (structured
+# outputs, xgrammar EBNF). SPARQL 1.1 Query and Update (W3C grammar) as nl2q sends it to Virtuoso:
+# - the query alone, or in the ```sparql block the prompt asks for: no prose, no comments, no prologue (finish() adds
+#   the PREFIX and DEFINE lines). The block matters: kept from opening the block it was told to write, the model
+#   starts with whatever else is allowed (a patient count came out as INSERT {...} WHERE {...} ; repeated);
+# - Virtuoso extras: OPTION (inference "<the global rule set>") after the object of a triple pattern, and its built-ins
+#   as prefixed function names (bif:datediff(...)); only prefixes that get declared (icd-10-gm:E11.9, see pn_prefix);
+# - keywords in upper or lower case; names, variables and prefixes in ASCII, without %XX or \ escapes in local
+#   names; no triple-quoted strings;
+# - whitespace: ws where SPARQL lets two tokens touch, ws1 where they must be apart (ORDER BY, ?x AS ?y, ?s sphn:p);
+#   a run is at most 100 characters, so a constrained model cannot loop on blank space.
+# It is about syntax, not safety: updates, DESCRIBE, CONSTRUCT, ASK, SERVICE, GRAPH <iri> stay writable, because a
+# request is translated literally and the compliance layer judges the query.
+# Upper-case rule names are keywords, lower-case ones are the W3C productions they are named after.
+
+root ::= unit | "```" "sparql"? "\n" unit "```"
+unit ::= (query | update) ws
+
+ws ::= [ \t\r\n]{0,100}
+ws1 ::= [ \t\r\n]{1,100}
+
+# ---- queries
+query ::= (select_query | construct_query | describe_query | ask_query) values_clause?
+select_query ::= select_clause dataset_clause* where_clause solution_modifier
+sub_select ::= select_clause where_clause solution_modifier values_clause?
+select_clause ::= SELECT (ws1 (DISTINCT | REDUCED))? ws projection
+projection ::= "*" | projection_item (ws projection_item)*
+projection_item ::= var | "(" ws expression ws1 AS ws1 var ws ")"
+construct_query ::= CONSTRUCT ws construct_template dataset_clause* where_clause solution_modifier
+                  | CONSTRUCT dataset_clause* ws1 WHERE ws "{" ws (triples_template ws)? "}" solution_modifier
+construct_template ::= "{" ws (triples_template ws)? "}"
+describe_query ::= DESCRIBE ws1 (var_or_iri (ws1 var_or_iri)* dataset_clause* where_clause?
+                                 | "*" dataset_clause* where_clause) solution_modifier
+ask_query ::= ASK dataset_clause* where_clause solution_modifier
+dataset_clause ::= ws1 FROM ws1 (NAMED ws1)? iri
+where_clause ::= ws1 WHERE ws group_graph_pattern | ws group_graph_pattern
+solution_modifier ::= group_clause? having_clause? order_clause? limit_offset?
+group_clause ::= ws1 GROUP ws1 BY ws1 group_condition (ws1 group_condition)*
+group_condition ::= builtin_call | function_call | var | "(" ws expression (ws1 AS ws1 var)? ws ")"
+having_clause ::= ws1 HAVING constraint+
+order_clause ::= ws1 ORDER ws1 BY order_condition+
+order_condition ::= ws1 (ASC | DESC) ws bracketted_expression | constraint | ws1 var
+limit_offset ::= limit_clause offset_clause? | offset_clause limit_clause?
+limit_clause ::= ws1 LIMIT ws1 integer
+offset_clause ::= ws1 OFFSET ws1 integer
+values_clause ::= ws1 VALUES ws data_block
+
+# ---- updates
+update ::= update1 (ws ";" ws update1)* (ws ";")?
+update1 ::= load | clear | drop | create | add | move | copy | insert_data | delete_data | delete_where | modify
+load ::= LOAD (ws1 SILENT)? ws1 iri (ws1 INTO ws1 graph_ref)?
+clear ::= CLEAR (ws1 SILENT)? ws1 graph_ref_all
+drop ::= DROP (ws1 SILENT)? ws1 graph_ref_all
+create ::= CREATE (ws1 SILENT)? ws1 graph_ref
+add ::= ADD (ws1 SILENT)? ws1 graph_or_default ws1 TO ws1 graph_or_default
+move ::= MOVE (ws1 SILENT)? ws1 graph_or_default ws1 TO ws1 graph_or_default
+copy ::= COPY (ws1 SILENT)? ws1 graph_or_default ws1 TO ws1 graph_or_default
+insert_data ::= INSERT ws1 DATA ws quads_block
+delete_data ::= DELETE ws1 DATA ws quads_block
+delete_where ::= DELETE ws1 WHERE ws quads_block
+modify ::= (WITH ws1 iri ws1)? (DELETE ws quads_block (ws INSERT ws quads_block)? | INSERT ws quads_block)
+           (ws1 using_clause)* ws1 WHERE ws group_graph_pattern
+using_clause ::= USING ws1 (NAMED ws1)? iri
+graph_or_default ::= DEFAULT | (GRAPH ws1)? iri
+graph_ref ::= GRAPH ws1 iri
+graph_ref_all ::= graph_ref | DEFAULT | NAMED | ALL
+quads_block ::= "{" ws (quads ws)? "}"
+quads ::= triples_template (ws1 quads_part)* | quads_part (ws1 quads_part)*
+quads_part ::= GRAPH ws1 var_or_iri ws "{" ws (triples_template ws)? "}" (ws ".")? (ws triples_template)?
+
+# ---- graph patterns
+group_graph_pattern ::= "{" ws ((sub_select | group_graph_pattern_sub) ws)? "}"
+group_graph_pattern_sub ::= triples_block next_pattern* | pattern_not_triples pattern_tail next_pattern*
+next_pattern ::= (ws1 keyword_pattern | ws group_or_union) pattern_tail
+pattern_tail ::= (ws ".")? (ws triples_block)?
+pattern_not_triples ::= keyword_pattern | group_or_union
+keyword_pattern ::= optional_pattern | minus_pattern | graph_pattern | service_pattern | filter | bind | inline_data
+group_or_union ::= group_graph_pattern (ws UNION ws group_graph_pattern)*
+optional_pattern ::= OPTIONAL ws group_graph_pattern
+minus_pattern ::= MINUS ws group_graph_pattern
+graph_pattern ::= GRAPH ws1 var_or_iri ws group_graph_pattern
+service_pattern ::= SERVICE (ws1 SILENT)? ws1 var_or_iri ws group_graph_pattern
+filter ::= FILTER constraint
+constraint ::= ws bracketted_expression | ws1 (builtin_call | function_call)
+bind ::= BIND ws "(" ws expression ws1 AS ws1 var ws ")"
+inline_data ::= VALUES ws data_block
+data_block ::= var ws "{" ws (data_value (ws1 data_value)* ws)? "}"
+             | "(" ws (var (ws var)* ws)? ")" ws "{" ws (data_row (ws data_row)* ws)? "}"
+data_row ::= "(" ws (data_value (ws1 data_value)* ws)? ")"
+data_value ::= iri | rdf_literal | numeric_literal | boolean_literal | UNDEF
+
+# ---- triples: with property paths and OPTION in WHERE, plain in templates and quads
+triples_block ::= triples_same_subject_path (ws "." ws triples_same_subject_path)* (ws ".")?
+triples_same_subject_path ::= var_or_term ws1 property_list_path | triples_node_path (ws property_list_path)?
+property_list_path ::= verb_path ws1 object_list_path (ws ";" (ws verb_path ws1 object_list_path)?)*
+verb_path ::= path | var
+object_list_path ::= object_path (ws "," ws object_path)*
+object_path ::= graph_node_path (ws1 option)?
+option ::= OPTION ws "(" ws INFERENCE ws1 "\"https://biomedit.ch/rdf/sphn-resource/global\"" ws ")"
+graph_node_path ::= var_or_term | triples_node_path
+triples_node_path ::= "(" ws graph_node_path (ws1 graph_node_path)* ws ")" | "[" ws property_list_path ws "]"
+path ::= path_sequence (ws "|" ws path_sequence)*
+path_sequence ::= path_elt_or_inverse (ws "/" ws path_elt_or_inverse)*
+path_elt_or_inverse ::= "^" ws path_elt | path_elt
+path_elt ::= path_primary [?*+]?
+path_primary ::= iri | "a" | "!" ws path_negated_property_set | "(" ws path ws ")"
+path_negated_property_set ::= path_one_in_property_set
+                            | "(" ws (path_one_in_property_set (ws "|" ws path_one_in_property_set)* ws)? ")"
+path_one_in_property_set ::= iri | "a" | "^" ws (iri | "a")
+triples_template ::= triples_same_subject (ws "." ws triples_same_subject)* (ws ".")?
+triples_same_subject ::= var_or_term ws1 property_list | triples_node (ws property_list)?
+property_list ::= verb ws1 object_list (ws ";" (ws verb ws1 object_list)?)*
+verb ::= var_or_iri | "a"
+object_list ::= graph_node (ws "," ws graph_node)*
+graph_node ::= var_or_term | triples_node
+triples_node ::= "(" ws graph_node (ws1 graph_node)* ws ")" | "[" ws property_list ws "]"
+
+# ---- expressions
+expression ::= and_expression (ws "||" ws and_expression)*
+and_expression ::= relational_expression (ws "&&" ws relational_expression)*
+relational_expression ::= additive_expression (ws ("=" | "!=" | "<=" | ">=" | "<" | ">") ws additive_expression
+                        | ws1 IN ws expression_list | ws1 NOT ws1 IN ws expression_list)?
+additive_expression ::= multiplicative_expression (ws [+\-] ws multiplicative_expression)*
+multiplicative_expression ::= unary_expression (ws [*/] ws unary_expression)*
+unary_expression ::= [!+\-] ws primary_expression | primary_expression
+primary_expression ::= bracketted_expression | builtin_call | iri_or_function | rdf_literal | numeric_literal
+                     | boolean_literal | var
+bracketted_expression ::= "(" ws expression ws ")"
+iri_or_function ::= iri (ws arg_list)?
+function_call ::= iri ws arg_list
+arg_list ::= nil | "(" ws (DISTINCT ws1)? expression (ws "," ws expression)* ws ")"
+expression_list ::= nil | "(" ws expression (ws "," ws expression)* ws ")"
+builtin_call ::= aggregate
+  | (STR | LANG | DATATYPE | IRI | URI | ABS | CEIL | FLOOR | ROUND | STRLEN | UCASE | LCASE | ENCODE_FOR_URI
+     | YEAR | MONTH | DAY | HOURS | MINUTES | SECONDS | TIMEZONE | TZ | MD5 | SHA1 | SHA256 | SHA384 | SHA512
+     | ISIRI | ISURI | ISBLANK | ISLITERAL | ISNUMERIC) ws "(" ws expression ws ")"
+  | (LANGMATCHES | CONTAINS | STRSTARTS | STRENDS | STRBEFORE | STRAFTER | STRLANG | STRDT | SAMETERM)
+    ws "(" ws expression ws "," ws expression ws ")"
+  | IF ws "(" ws expression ws "," ws expression ws "," ws expression ws ")"
+  | (SUBSTR | REGEX) ws "(" ws expression ws "," ws expression (ws "," ws expression)? ws ")"
+  | REPLACE ws "(" ws expression ws "," ws expression ws "," ws expression (ws "," ws expression)? ws ")"
+  | BOUND ws "(" ws var ws ")"
+  | BNODE ws ("(" ws expression ws ")" | nil)
+  | (RAND | NOW | UUID | STRUUID) ws nil
+  | (CONCAT | COALESCE) ws expression_list
+  | EXISTS ws group_graph_pattern
+  | NOT ws1 EXISTS ws group_graph_pattern
+aggregate ::= COUNT ws "(" ws (DISTINCT ws1)? ("*" | expression) ws ")"
+  | (SUM | MIN | MAX | AVG | SAMPLE) ws "(" ws (DISTINCT ws1)? expression ws ")"
+  | GROUP_CONCAT ws "(" ws (DISTINCT ws1)? expression (ws ";" ws SEPARATOR ws "=" ws string)? ws ")"
+
+# ---- terms
+var_or_term ::= var | graph_term
+var_or_iri ::= var | iri
+graph_term ::= iri | rdf_literal | numeric_literal | boolean_literal | blank_node | nil
+var ::= [?$] [A-Za-z0-9_]+
+iri ::= iriref | prefixed_name
+iriref ::= "<" [^<>"{}|^`\\\x00-\x20]* ">"
+prefixed_name ::= "sphn:" sphn_term | pn_prefix ":" pn_local?
+# after sphn: only the terms SPHN 2026.1 declares (grammar.py fills SPHN_TERMS from config/schema.json): a name the
+# schema does not have cannot be written, so it never costs a retry
+sphn_term ::= SPHN_TERMS
+# only the prefixes finish() declares (config/schema.json) and those Virtuoso predefines: no other one parses, and a
+# bare word (NULL, CASE) must not open a prefix the model never closes (it loops on name characters instead)
+pn_prefix ::= "atc" | "bif" | "chop" | "constraints" | "dc" | "dcm" | "dcterms" | "eco" | "edam" | "efo" | "emdn"
+            | "foaf" | "genepio" | "geno" | "hgnc" | "icd-10-gm" | "icd-o-3" | "loinc" | "obi" | "oncotree" | "ordo"
+            | "owl" | "rdf" | "rdfs" | "skos" | "snomed" | "so" | "sphn-atc" | "sphn-dcm" | "sphn-deprecated"
+            | "sphn-eco" | "sphn-edam" | "sphn-efo" | "sphn-genepio" | "sphn-geno" | "sphn-hgnc" | "sphn-icd-o-3"
+            | "sphn-individual" | "sphn-loinc" | "sphn-obi" | "sphn-ordo" | "sphn-so" | "sql" | "ucum" | "xsd"
+pn_local ::= [A-Za-z0-9_:] ([A-Za-z0-9_.:\-]* [A-Za-z0-9_:\-])?
+blank_node ::= "_:" [A-Za-z0-9_] ([A-Za-z0-9_.\-]* [A-Za-z0-9_\-])? | "[" ws "]"
+nil ::= "(" ws ")"
+rdf_literal ::= string ("@" [A-Za-z]+ ("-" [A-Za-z0-9]+)* | "^^" iri)?
+# a string's body ends with its closing quote and says what may follow it: xgrammar then decides most tokens that
+# close a string ahead of time (as in its JSON grammar), which keeps the per-token mask fast
+string ::= "\"" string2 | "'" string1
+string2 ::= ("\"" | [^"\\\r\n] string2 | echar string2) (= [ \t\r\n^@),;.}\]=!<>&|+\-*/])
+string1 ::= ("'" | [^'\\\r\n] string1 | echar string1) (= [ \t\r\n^@),;.}\]=!<>&|+\-*/])
+echar ::= "\\" [tbnrf\\"']
+numeric_literal ::= [+\-]? ([0-9]+ ("." [0-9]+)? exponent? | [0-9]+ "." exponent | "." [0-9]+ exponent?)
+exponent ::= [eE] [+\-]? [0-9]+
+integer ::= [0-9]+
+boolean_literal ::= "true" | "false"
+
+# ---- keywords
+SELECT ::= "SELECT" | "select"
+DISTINCT ::= "DISTINCT" | "distinct"
+REDUCED ::= "REDUCED" | "reduced"
+AS ::= "AS" | "as"
+CONSTRUCT ::= "CONSTRUCT" | "construct"
+DESCRIBE ::= "DESCRIBE" | "describe"
+ASK ::= "ASK" | "ask"
+FROM ::= "FROM" | "from"
+NAMED ::= "NAMED" | "named"
+WHERE ::= "WHERE" | "where"
+GROUP ::= "GROUP" | "group"
+BY ::= "BY" | "by"
+HAVING ::= "HAVING" | "having"
+ORDER ::= "ORDER" | "order"
+ASC ::= "ASC" | "asc"
+DESC ::= "DESC" | "desc"
+LIMIT ::= "LIMIT" | "limit"
+OFFSET ::= "OFFSET" | "offset"
+VALUES ::= "VALUES" | "values"
+UNDEF ::= "UNDEF" | "undef"
+OPTIONAL ::= "OPTIONAL" | "optional"
+MINUS ::= "MINUS" | "minus"
+GRAPH ::= "GRAPH" | "graph"
+SERVICE ::= "SERVICE" | "service"
+SILENT ::= "SILENT" | "silent"
+FILTER ::= "FILTER" | "filter"
+BIND ::= "BIND" | "bind"
+UNION ::= "UNION" | "union"
+NOT ::= "NOT" | "not"
+IN ::= "IN" | "in"
+EXISTS ::= "EXISTS" | "exists"
+OPTION ::= "OPTION" | "option"
+INFERENCE ::= "inference" | "INFERENCE"
+LOAD ::= "LOAD" | "load"
+INTO ::= "INTO" | "into"
+CLEAR ::= "CLEAR" | "clear"
+DROP ::= "DROP" | "drop"
+CREATE ::= "CREATE" | "create"
+ADD ::= "ADD" | "add"
+MOVE ::= "MOVE" | "move"
+COPY ::= "COPY" | "copy"
+TO ::= "TO" | "to"
+INSERT ::= "INSERT" | "insert"
+DELETE ::= "DELETE" | "delete"
+DATA ::= "DATA" | "data"
+WITH ::= "WITH" | "with"
+USING ::= "USING" | "using"
+DEFAULT ::= "DEFAULT" | "default"
+ALL ::= "ALL" | "all"
+COUNT ::= "COUNT" | "count"
+SUM ::= "SUM" | "sum"
+MIN ::= "MIN" | "min"
+MAX ::= "MAX" | "max"
+AVG ::= "AVG" | "avg"
+SAMPLE ::= "SAMPLE" | "sample"
+GROUP_CONCAT ::= "GROUP_CONCAT" | "group_concat"
+SEPARATOR ::= "SEPARATOR" | "separator"
+STR ::= "STR" | "str"
+LANG ::= "LANG" | "lang"
+LANGMATCHES ::= "LANGMATCHES" | "langMatches" | "langmatches"
+DATATYPE ::= "DATATYPE" | "datatype"
+BOUND ::= "BOUND" | "bound"
+IRI ::= "IRI" | "iri"
+URI ::= "URI" | "uri"
+BNODE ::= "BNODE" | "bnode"
+RAND ::= "RAND" | "rand"
+ABS ::= "ABS" | "abs"
+CEIL ::= "CEIL" | "ceil"
+FLOOR ::= "FLOOR" | "floor"
+ROUND ::= "ROUND" | "round"
+CONCAT ::= "CONCAT" | "concat"
+SUBSTR ::= "SUBSTR" | "substr"
+STRLEN ::= "STRLEN" | "strlen"
+REPLACE ::= "REPLACE" | "replace"
+UCASE ::= "UCASE" | "ucase"
+LCASE ::= "LCASE" | "lcase"
+ENCODE_FOR_URI ::= "ENCODE_FOR_URI" | "encode_for_uri"
+CONTAINS ::= "CONTAINS" | "contains"
+STRSTARTS ::= "STRSTARTS" | "strStarts" | "strstarts"
+STRENDS ::= "STRENDS" | "strEnds" | "strends"
+STRBEFORE ::= "STRBEFORE" | "strBefore" | "strbefore"
+STRAFTER ::= "STRAFTER" | "strAfter" | "strafter"
+YEAR ::= "YEAR" | "year"
+MONTH ::= "MONTH" | "month"
+DAY ::= "DAY" | "day"
+HOURS ::= "HOURS" | "hours"
+MINUTES ::= "MINUTES" | "minutes"
+SECONDS ::= "SECONDS" | "seconds"
+TIMEZONE ::= "TIMEZONE" | "timezone"
+TZ ::= "TZ" | "tz"
+NOW ::= "NOW" | "now"
+UUID ::= "UUID" | "uuid"
+STRUUID ::= "STRUUID" | "struuid"
+MD5 ::= "MD5" | "md5"
+SHA1 ::= "SHA1" | "sha1"
+SHA256 ::= "SHA256" | "sha256"
+SHA384 ::= "SHA384" | "sha384"
+SHA512 ::= "SHA512" | "sha512"
+COALESCE ::= "COALESCE" | "coalesce"
+IF ::= "IF" | "if"
+STRLANG ::= "STRLANG" | "strlang"
+STRDT ::= "STRDT" | "strdt"
+SAMETERM ::= "sameTerm" | "SAMETERM" | "sameterm"
+ISIRI ::= "isIRI" | "ISIRI" | "isiri"
+ISURI ::= "isURI" | "ISURI" | "isuri"
+ISBLANK ::= "isBLANK" | "isBlank" | "ISBLANK" | "isblank"
+ISLITERAL ::= "isLITERAL" | "isLiteral" | "ISLITERAL" | "isliteral"
+ISNUMERIC ::= "isNUMERIC" | "isNumeric" | "ISNUMERIC" | "isnumeric"
+REGEX ::= "REGEX" | "regex"

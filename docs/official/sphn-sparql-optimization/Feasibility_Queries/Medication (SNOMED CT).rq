@@ -1,0 +1,30 @@
+DEFINE sql:select-option "order"
+
+PREFIX sphn: <https://biomedit.ch/rdf/sphn-schema/sphn#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX ucum: <https://biomedit.ch/rdf/sphn-resource/ucum/>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+PREFIX einstein: <https://biomedit.ch/rdf/sphn-resource/einstein/shortcuts#>
+SELECT (COUNT(?pseudo_id) AS ?countResult) 
+WHERE {
+        {
+            SELECT ?pseudo_id (MAX(?drug_administration_event_filter) AS ?drug_administration_event_alias)
+            WHERE {
+                    {
+                        SELECT (?g as ?pseudo_id) ?drug_administration_event_filter 
+                            WHERE {
+                                {
+                                    SELECT DISTINCT ?g 
+                                    WHERE {
+                                        GRAPH ?g {
+                                                    ?drug_administration_event0_code rdf:type <http://snomed.info/id/771351007> OPTION(inference "https://biomedit.ch/rdf/sphn-resource/global").
+                                                    ?drug_administration_event einstein:DrugAdministrationEvent_codereplacement1 ?drug_administration_event0_code .
+                                        }
+                                    }
+                                }
+                                BIND("true"^^xsd:boolean AS ?drug_administration_event_filter)
+                        }
+                    }
+            }
+        }
+}

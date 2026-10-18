@@ -1,0 +1,50 @@
+DEFINE sql:select-option "order"
+
+PREFIX sphn: <https://biomedit.ch/rdf/sphn-schema/sphn#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX ucum: <https://biomedit.ch/rdf/sphn-resource/ucum/>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+PREFIX einstein: <https://biomedit.ch/rdf/sphn-resource/einstein/shortcuts#>
+SELECT (COUNT(?pseudo_id) AS ?countResult) 
+WHERE {
+        {
+            SELECT ?pseudo_id (MAX(?diagnosis_filter) AS ?diagnosis_alias) (MAX(?lab_test_filter) as ?lab_test_2_alias)
+            WHERE {
+                    {
+                        SELECT ?pseudo_id (?diagnosis_filter_pre AS ?diagnosis_filter)
+                        WHERE {
+                            {
+                                    SELECT DISTINCT(?g AS ?pseudo_id)
+                                    WHERE {
+                                            GRAPH ?g {
+                                                  ?diagnosis0_code rdf:type <https://biomedit.ch/rdf/sphn-resource/icd-10-gm/E11> OPTION(inference "https://biomedit.ch/rdf/sphn-resource/global").
+                                                    ?diagnosis sphn:hasCode ?diagnosis0_code .
+                                                    ?diagnosis rdf:type sphn:BilledDiagnosis .
+                                            }
+                                    }
+                            }
+                            BIND("true"^^xsd:boolean AS ?diagnosis_filter_pre)
+                        }
+                    }
+                    UNION
+                        {
+                        SELECT ?pseudo_id (?lab_test_filter_pre AS ?lab_test_filter)
+                        WHERE {
+                            {
+                                    SELECT DISTINCT(?g AS ?pseudo_id)
+                                    WHERE {
+                                            GRAPH ?g {
+                                                ?lab_test0_code rdf:type <https://loinc.org/rdf/718-7>.
+                                                ?lab_test sphn:hasCode ?lab_test0_code . 
+                                                ?lab_test_event sphn:hasLabTest ?lab_test .
+                                            }
+                                    }
+                            }
+                            BIND("true"^^xsd:boolean AS ?lab_test_filter_pre)
+                        }
+                    }
+            }
+            GROUP BY ?pseudo_id
+        }
+    FILTER (?diagnosis_alias && ?lab_test_2_alias)
+}

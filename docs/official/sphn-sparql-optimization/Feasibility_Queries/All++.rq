@@ -1,0 +1,29 @@
+DEFINE sql:select-option "order"
+
+PREFIX sphn: <https://biomedit.ch/rdf/sphn-schema/sphn#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX ucum: <https://biomedit.ch/rdf/sphn-resource/ucum/>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+PREFIX einstein: <https://biomedit.ch/rdf/sphn-resource/einstein/shortcuts#>
+PREFIX snomed: <http://snomed.info/id/>
+SELECT *
+WHERE {
+        {
+        SELECT (?g AS ?pseudo_id) ?ageDistribution_temp ?administrativeSexDistribution_code
+        WHERE {
+                GRAPH ?g {
+                        {
+                        ?administrativeSexDistribution_temp_concept rdf:type ?administrativeSexDistribution_code.
+                        FILTER (?administrativeSexDistribution_code IN (snomed:248152002, snomed:248153007, snomed:32570681000036106))
+                        ?administrativeSexDistribution_concept sphn:hasCode ?administrativeSexDistribution_temp_concept.
+                        ?administrativeSexDistribution_concept rdf:type sphn:AdministrativeSex.
+                        }
+                        UNION
+                        {
+                        ?ageDistribution_concept einstein:hasCalculatedBirthDate ?ageDistribution_temp_concept.
+                        BIND(bif:datediff("year", ?ageDistribution_temp_concept, NOW()) AS ?ageDistribution_temp)
+                        }
+                }
+            }
+        }
+    }

@@ -1,0 +1,71 @@
+DEFINE sql:select-option "order"
+
+PREFIX sphn: <https://biomedit.ch/rdf/sphn-schema/sphn#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX ucum: <https://biomedit.ch/rdf/sphn-resource/ucum/>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+PREFIX einstein: <https://biomedit.ch/rdf/sphn-resource/einstein/shortcuts#>
+PREFIX snomed: <http://snomed.info/id/>
+
+SELECT ?pseudo_id ?age ?sex
+WHERE {
+        {
+                SELECT ?pseudo_id (MAX(?lab_test_filter) AS ?lab_test_alias) (MAX(?ageDistribution_temp) AS ?age) (MAX(?administrativeSexDistribution_code) AS ?sex)
+                WHERE {
+                    {
+                        SELECT (?g as ?pseudo_id) ?lab_test_filter
+                        WHERE {
+                            {
+                                SELECT DISTINCT ?g 
+                                WHERE {
+                                    GRAPH ?g {
+                                        ?lab_test0_code rdf:type <https://loinc.org/rdf/718-7>.
+                                        ?lab_test sphn:hasCode ?lab_test0_code . 
+                                        ?lab_test sphn:hasResult ?lab_res . 
+                                        ?lab_res einstein:LabResult_codereplacement1 ?labUnitCode . 
+                                        ?labUnitCode rdf:type  <https://biomedit.ch/rdf/sphn-resource/ucum/gperL> .
+                                        ?lab_res einstein:LabResult_valuereplacement1 ?lab_test_i1_filter.
+                                        FILTER(?lab_test_i1_filter > 15 )
+                                    }
+                                }
+                            }
+                            BIND("true"^^xsd:boolean AS ?lab_test_filter)
+                        }
+                    }
+                    UNION
+                    {
+                        SELECT (?g as ?pseudo_id) ?administrativeSexDistribution_code
+                        WHERE {
+                            {
+                                SELECT ?g ?administrativeSexDistribution_code
+                                WHERE {
+                                    GRAPH ?g {
+                                        ?administrativeSexDistribution_temp_concept rdf:type ?administrativeSexDistribution_code.
+                                        FILTER (?administrativeSexDistribution_code IN (snomed:248152002, snomed:248153007, snomed:32570681000036106))
+                                        ?administrativeSexDistribution_concept sphn:hasCode ?administrativeSexDistribution_temp_concept.
+                                        ?administrativeSexDistribution_concept rdf:type sphn:AdministrativeSex.
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    UNION
+                    {
+                        SELECT (?g as ?pseudo_id) ?ageDistribution_temp
+                        WHERE {
+                            {
+                                SELECT ?g ?ageDistribution_temp
+                                WHERE {
+                                    GRAPH ?g {
+                                        ?ageDistribution_concept einstein:hasCalculatedBirthDate ?ageDistribution_temp_concept.
+                                        BIND(bif:datediff("year", ?ageDistribution_temp_concept, NOW()) AS ?ageDistribution_temp)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                GROUP BY ?pseudo_id
+        }
+    FILTER (?lab_test_alias)
+}

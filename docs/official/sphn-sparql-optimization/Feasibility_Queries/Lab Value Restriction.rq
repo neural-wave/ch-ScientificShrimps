@@ -1,0 +1,24 @@
+DEFINE sql:select-option "order"
+
+PREFIX sphn: <https://biomedit.ch/rdf/sphn-schema/sphn#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX ucum: <https://biomedit.ch/rdf/sphn-resource/ucum/>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+PREFIX einstein: <https://biomedit.ch/rdf/sphn-resource/einstein/shortcuts#>
+SELECT (COUNT(DISTINCT *) AS ?countResult) 
+WHERE {
+  {
+    SELECT (?g as ?pseudo_id)
+        WHERE {
+            GRAPH ?g {
+                        ?lab_test0_code rdf:type <https://loinc.org/rdf/718-7>.
+                        ?lab_test sphn:hasCode ?lab_test0_code . 
+                        ?lab_test sphn:hasResult ?lab_res . 
+                        ?lab_res einstein:LabResult_codereplacement1 ?labUnitCode . 
+                        ?labUnitCode rdf:type  <https://biomedit.ch/rdf/sphn-resource/ucum/gperL> .
+                        ?lab_res einstein:LabResult_valuereplacement1 ?lab_test_i1_filter.
+                        FILTER(?lab_test_i1_filter > 15 )
+            }
+    }
+  }
+}  

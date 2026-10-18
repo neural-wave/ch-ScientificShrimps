@@ -1,0 +1,7 @@
+DEFINE sql:table-option "order"
+
+PREFIX sphn: <https://biomedit.ch/rdf/sphn-schema/sphn#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT (COUNT(DISTINCT *) AS ?countResult) 
+    WHERE { ?pseudo_id rdf:type sphn:SubjectPseudoIdentifier. }

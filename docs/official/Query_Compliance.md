@@ -1,0 +1,5 @@
+- Queries about a single, identifiable patient are not allowed.
+- Queries must always return aggregated information across all patients (e.g. "give me the number of patients that ...").
+- Queries that attempt to match the whole graph without restriction are not allowed.
+- Only SELECT queries are allowed
+- No identifiers should be exposed like patient ID, laboratory ID, diagnosis ID, etc ...

@@ -1,0 +1,11 @@
+# nl2q: API, compliance check, evaluation and tests (Python >= 3.10, tested on 3.12).
+#   python -m venv .venv && . .venv/bin/activate && pip install -r requirements.txt
+# The model servers run in their own venvs: serving/requirements-llm.txt, serving/requirements-d3.txt.
+rdflib==7.6.0        # SPARQL parsing for the compliance check; schema reading for tools.adapt
+rank-bm25==0.2.2     # schema-block and code lookup for the prompt
+openai==3.31.0       # client for the OpenAI-compatible vLLM server
+requests==2.34.2     # Virtuoso endpoint (evaluation, tools.adapt --endpoint)
+fastapi==0.143.1     # POST /nl-to-sparql
+uvicorn==0.54.0
+pytest==9.1.1        # tests
+httpx==0.28.1        # FastAPI TestClient

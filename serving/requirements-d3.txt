@@ -1,0 +1,12 @@
+# d3 decision model server (serve_decision.sh, only for the NL2Q_CHECKER=d3 A/B), in its own venv:
+#   python -m venv $SCRATCH/venvs/d3. d3's pinned transformers/torch clash with vLLM: never share the venv.
+torch>=2.8
+torchvision
+transformers==5.17.0
+accelerate>=1.10
+safetensors>=0.6
+huggingface_hub>=1.0
+flash-linear-attention==0.5.2
+einops
+pillow>=10
+opencv-python-headless

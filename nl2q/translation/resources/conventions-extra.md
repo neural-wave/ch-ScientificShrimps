@@ -1,0 +1,3 @@
+- "None of", "no ... matches", "without any": wrap the whole match in FILTER NOT EXISTS { ... }. A FILTER (?a != ?b) is true as soon as one pair differs, so it does not mean "matches none". (SPARQL 1.1)
+- A measured value carries its unit: ?quantity sphn:hasValue ?value ; sphn:hasUnit/sphn:hasCode ?unit . Read ?unit and convert when the question names another unit (1 week = 7 days, 1 day = 24 hours); never assume the unit a value is stored in. (SPHN 2026.1 schema: Quantity, Unit)
+- Count what the question counts: "how many stays/cases" counts the cases (COUNT(DISTINCT ?case)), "how many patients" counts the patients (COUNT(DISTINCT ?g)), and a distribution groups at the level the question names, not by a record. (Query_Compliance.md; organizers' examples)

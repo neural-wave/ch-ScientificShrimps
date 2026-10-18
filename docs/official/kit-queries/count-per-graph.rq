@@ -1,0 +1,8 @@
+SELECT ?g (COUNT(*) AS ?triples)
+WHERE {
+  GRAPH ?g { ?s ?p ?o }
+  FILTER(STRSTARTS(STR(?g), "http://example.org/graph/"))
+}
+GROUP BY ?g
+ORDER BY DESC(?triples)
+LIMIT 10

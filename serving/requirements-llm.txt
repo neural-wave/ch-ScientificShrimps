@@ -1,0 +1,2 @@
+# SPARQL generator server (serve_llm.sh), in its own venv: python -m venv $SCRATCH/venvs/vllm
+vllm==0.31.0
