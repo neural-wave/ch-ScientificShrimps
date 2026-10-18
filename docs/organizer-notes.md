@@ -1,8 +1,8 @@
 # What the organizers told us
 
-Answers that shape the system and the report, with the date and the channel. Newest first.
+Answers that shape the system and the report.
 
-## 17 Oct 17:30, Malik7 on Discord (answering Priyanshi Chandra)
+## 17 Oct 17:30 clarification
 
 - **Schema:** the evaluation uses SPHN 2026.1, so focus on the 2026.1 schema.
 - **Queries and data:** a different set of queries from the examples, run on our same dataset, the 2024.2 mock data.
@@ -17,7 +17,7 @@ Answers that shape the system and the report, with the date and the channel. New
   - Keep writing 2026.1. Terms renamed between the versions won't be tested, so a 2026.1-only term that empties a
     query on this data (`hasDrugPrescription`, `hasAdmission`) is our own risk.
 
-## 17 Oct, the main organizer to Lorenzo (voice)
+## 17 Oct clarification
 
 **1. The system must be static: it must not depend on the database it runs against.**
 - Metadata about the dataset may only be an optional component that improves optimization. It must not be part of the
@@ -60,7 +60,7 @@ Answers that shape the system and the report, with the date and the channel. New
 - *For us:* the metadata v2 work flags every (class, property) pair where the data and the SHACL 2026.1 cardinalities
   disagree.
 
-## 16-17 Oct, Malik7 on Discord
+## 16-17 Oct clarification
 
 - **Non-compliant requests:**
   - `sparql_query` may be empty; `is_compliant: false` and the reason are what count.
