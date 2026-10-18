@@ -14,3 +14,4 @@ nl2q_data*/
 *.pdf
 !docs/official/*.pdf
 !docs/report/*.pdf
+!deliverables/report.pdf

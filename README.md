@@ -2,6 +2,12 @@
 
 Neural Wave 2026 · SPHN / SIB challenge "Secure NL-to-SPARQL over Clinical Knowledge Graphs".
 
+<video src="deliverables/video_demo.mov" controls width="100%"></video>
+
+Demo video: [deliverables/video_demo.mov](deliverables/video_demo.mov) ·
+[Swisstransfer](https://www.swisstransfer.com/dl/01a14dfe-e914-729f-a153-bcdc1587c3f4) · Report:
+[deliverables/report.pdf](deliverables/report.pdf)
+
 A researcher asks a question in plain language. nl2q returns a SPARQL query over SPHN 2026.1 data in Virtuoso and says
 whether that query complies with the data-access rules: no single patient, aggregates only, no unrestricted match,
 SELECT only, no identifiers. The API is the one in the organizers' spec
